@@ -78,7 +78,7 @@ def day_discussion(player: Player, state: GameState) -> Message:
 
     return Message(
         sender_id=player.id,
-        content=f"{player.name} ({player.role}): {response.content.strip()}",
+        content=response.content.strip(),
         phase="day",
         round=state.round,
         is_public=True,

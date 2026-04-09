@@ -101,11 +101,12 @@ class GameState:
         return None
 
     def public_history(self, max_messages: int = 20) -> str:
-        """Return recent public messages as a readable string for LLM context."""
         public = [m for m in self.messages if m.is_public][-max_messages:]
+        id_to_name = {p.id: p.name for p in self.players}
         lines = []
         for m in public:
-            lines.append(f"[Round {m.round} | {m.phase}] {m.sender_id}: {m.content}")
+            name = id_to_name.get(m.sender_id, m.sender_id)
+            lines.append(f"[Round {m.round} | {m.phase}] {name}: {m.content}")
         return "\n".join(lines) if lines else "(no messages yet)"
     
     def validate(self) -> None:

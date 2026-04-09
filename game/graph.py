@@ -80,7 +80,6 @@ def day_node(state: GameState) -> dict:
     for player in alive:
         msg = day_discussion(player, state)
         messages.append(msg)
-        state.messages.append(msg)
 
     return {
         "phase": "vote",
