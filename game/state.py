@@ -62,7 +62,7 @@ class GameState:
     # --- Night actions ---
     mafia_target: str | None = None       # player_id mafia wants to kill
     doctor_save: str | None = None        # player_id doctor protects
-    detective_result: str | None = None  # "mafia" or "innocent"
+    detective_findings: Annotated[list[str], operator.add] = field(default_factory=list)  
 
     # --- Chat log ---
     messages: Annotated[list[Message], operator.add] = field(default_factory=list)
@@ -102,7 +102,7 @@ class GameState:
 
     def public_history(self, max_messages: int = 20) -> str:
         public = [m for m in self.messages if m.is_public][-max_messages:]
-        id_to_name = {p.id: p.name for p in self.players}
+        id_to_name = {p.id: f"{p.name} ({p.id})" for p in self.players}
         lines = []
         for m in public:
             name = id_to_name.get(m.sender_id, m.sender_id)

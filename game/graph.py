@@ -59,27 +59,36 @@ def setup_node(state: GameState) -> dict:
         "votes": {},
         "mafia_target": None,
         "doctor_save": None,
-        "detective_result": None,
+        "detective_findings": [],
         "winner": None,
     }
 
 
 # ---------------------------------------------------------------------------
-# Node: day — LLMs discuss publicly
+# Node: day — narrator first, then private reasoning + public discussion
 # ---------------------------------------------------------------------------
 
 def day_node(state: GameState) -> dict:
     from game.agents import day_discussion
 
     alive = state.alive_players()
-    messages = [narrate(state, (
+
+    # Narrator announces the phase — local list only, never mutate state
+    narrator_msg = narrate(state, (
         f"Round {state.round} — Day phase begins. "
         f"{len(alive)} players remain: {', '.join(p.name for p in alive)}."
-    ))]
+    ))
 
+    messages = [narrator_msg]
+    round_history: list[Message] = [narrator_msg]
+
+    # Each player reasons privately then speaks publicly
+    # round_history grows locally so each player sees what was said before them
     for player in alive:
-        msg = day_discussion(player, state)
-        messages.append(msg)
+        private_msg, public_msg = day_discussion(player, state, round_history)
+        messages.append(private_msg)
+        messages.append(public_msg)
+        round_history.append(public_msg)
 
     return {
         "phase": "vote",
@@ -158,8 +167,9 @@ def night_node(state: GameState) -> dict:
 
     messages = []
     alive = state.alive_players()
+    detective_findings: list[str] = []
 
-    # --- Mafia picks a target ---
+    # --- Mafia discusses and picks a target ---
     mafia = state.mafia_players()
     village = state.village_players()
     mafia_target_id: str | None = None
@@ -172,18 +182,27 @@ def night_node(state: GameState) -> dict:
     doctor = next((p for p in alive if p.role == "doctor"), None)
     doctor_save_id: str | None = None
     if doctor:
-        doctor_save_id = doctor_pick_save(doctor, state)
+        doctor_save_id, doctor_msg = doctor_pick_save(doctor, state)
+        messages.append(doctor_msg)
+        saved_player = state.get_player(doctor_save_id)
+        messages.append(Message(
+            sender_id="narrator",
+            content=f"The doctor chose to protect {saved_player.name if saved_player else doctor_save_id}.",
+            phase="night",
+            round=state.round,
+            is_public=False,
+        ))
 
     # --- Detective investigates ---
     detective = next((p for p in alive if p.role == "detective"), None)
-    detective_result: str | None = None
     if detective:
-        target_id, result = detective_investigate(detective, state)
-        detective_result = result
+        target_id, finding, detective_msg = detective_investigate(detective, state)
+        detective_findings.append(finding)
+        messages.append(detective_msg)
         investigated = state.get_player(target_id)
         messages.append(Message(
             sender_id="narrator",
-            content=f"Detective investigated {investigated.name if investigated else target_id}: they are {result}.",
+            content=f"Detective investigated {investigated.name if investigated else target_id}: {finding}.",
             phase="night",
             round=state.round,
             is_public=False,
@@ -218,7 +237,7 @@ def night_node(state: GameState) -> dict:
         "players": updated_players,
         "mafia_target": mafia_target_id,
         "doctor_save": doctor_save_id,
-        "detective_result": detective_result,
+        "detective_findings": detective_findings,
         "messages": messages,
     }
 
