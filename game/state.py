@@ -109,10 +109,10 @@ class GameState:
         return "\n".join(lines) if lines else "(no messages yet)"
     
     def validate(self) -> None:
-    ids = [p.id for p in self.players]
-    names = [p.name for p in self.players]
-    if len(ids) != len(set(ids)):
-        raise ValueError(f"Duplicate player IDs: {ids}")
+        ids = [p.id for p in self.players]
+        names = [p.name for p in self.players]
+        if len(ids) != len(set(ids)):
+            raise ValueError(f"Duplicate player IDs: {ids}")
 
     def __repr__(self) -> str:
         return (
